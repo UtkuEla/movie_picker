@@ -1,3 +1,4 @@
 international-movies-json
 *.parquet
 *.csv
+*.ipynb_checkpoints
