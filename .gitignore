@@ -1,2 +1,3 @@
 international-movies-json
 *.parquet
+*.csv
