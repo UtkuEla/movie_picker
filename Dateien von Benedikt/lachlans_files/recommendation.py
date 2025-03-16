@@ -12,14 +12,14 @@ def compute_similarities(df):
     cosine_sim1 = linear_kernel(tfidf_matrix, tfidf_matrix)
 
     # Metadata soup mit genres, keywords, etc.
-    df_soup = df[["genres", "keywords", "title", "tagline", "cast", "director"]].copy()
+    df_soup = df[["genres", "keywords", "title", "cast", "director"]].copy()
     df_soup['soup'] = df_soup.fillna('').astype(str).agg(' '.join, axis=1)
-    metadata_vectorizer = TfidfVectorizer(stop_words='english')
-    metadata_matrix = metadata_vectorizer.fit_transform(df_soup['soup'])
+    # metadata_vectorizer = TfidfVectorizer(stop_words='english')
+    metadata_matrix = tfidf.fit_transform(df_soup['soup'])
     cosine_sim2 = linear_kernel(metadata_matrix, metadata_matrix)
 
     # Kombinierte Ähnlichkeit -> 0.8 für overview, 0.2 für soup
-    cosine_sim_combined = 0.2 * cosine_sim1 + 0.8 * cosine_sim2
+    cosine_sim_combined = 0.1 * cosine_sim1 + 0.9 * cosine_sim2
     return cosine_sim1, cosine_sim2, cosine_sim_combined
 
 ## Updated for Filtering ##
