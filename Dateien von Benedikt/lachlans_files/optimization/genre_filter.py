@@ -11,4 +11,4 @@ def get_all_genres(movies_df):
 def filter_movies_by_genre(movies_df, selected_genre):
     cleaned_genre = selected_genre.lower().strip()
     genre_filter = movies_df["genres"].apply(lambda x: cleaned_genre in [g.lower().strip() for g in x.split(",")])
-    return movies_df.loc[genre_filter][0:10]
+    return movies_df.loc[genre_filter][0:10].round(2)

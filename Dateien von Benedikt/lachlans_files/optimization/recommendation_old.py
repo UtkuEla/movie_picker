@@ -1,25 +1,27 @@
 import pandas as pd
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel, cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 import re
 
 def compute_similarities(df):
-    # TF-IDF für Beschreibungen beibehalten (da hier Häufigkeit wichtig ist)
+    # Bessere Vorverarbeitung der Texte
     df['overview'] = df['overview'].fillna('')
     df['overview'] = df['overview'].apply(preprocess_text)
     
+    # Verbesserte TF-IDF für Beschreibungen mit n-grams
     tfidf = TfidfVectorizer(
         stop_words='english',
-        ngram_range=(1, 2),
-        max_features=5000,
-        min_df=2
+        ngram_range=(1, 2),  # Verwende Unigramme und Bigramme
+        max_features=5000,   # Begrenze Features auf die wichtigsten
+        min_df=2             # Ignoriere zu seltene Wörter
     )
     tfidf_matrix = tfidf.fit_transform(df['overview'])
     cosine_sim1 = linear_kernel(tfidf_matrix, tfidf_matrix)
 
-    # Meta Soup with weighted entries
+    # Verbesserte Metadata-Suppe mit besserer Gewichtung
+    # Vorbereiten der Metadaten mit Gewichtung
     df['genres_weighted'] = df['genres'].fillna('').apply(
         lambda x: ' '.join([genre.strip() + ' ' + genre.strip() for genre in x.split(',')])
     )
@@ -36,7 +38,7 @@ def compute_similarities(df):
         lambda x: ' '.join([kw.strip() for kw in x.split(',')])
     )
     
-    # Combine meta data
+    # Kombiniere gewichtete Metadaten
     df['metadata_soup'] = (
         df['genres_weighted'] + ' ' + 
         df['director_weighted'] + ' ' + 
@@ -47,20 +49,24 @@ def compute_similarities(df):
     
     df['metadata_soup'] = df['metadata_soup'].apply(preprocess_text)
     
-    # CountVectorizer is used as an alternative to TDF. 
-    # https://www.kaggle.com/code/ibtesama/getting-started-with-a-movie-recommendation-system?scriptVersionId=161380022&cellId=58
-    # We don't want to down-weight the presence of an actor/director if he or she has acted or directed in a lot of movies.
-    count_vectorizer = CountVectorizer(
+    # TF-IDF auf Metadaten
+    metadata_vectorizer = TfidfVectorizer(
         stop_words='english',
         ngram_range=(1, 2),
         max_features=5000,
         min_df=2
     )
-    count_matrix = count_vectorizer.fit_transform(df['metadata_soup'])
-    cosine_sim2 = cosine_similarity(count_matrix)
+    metadata_matrix = metadata_vectorizer.fit_transform(df['metadata_soup'])
+    cosine_sim2 = linear_kernel(metadata_matrix, metadata_matrix)
     
-    # Combine and weight matrixes
-    cosine_sim_combined = 0.8 * cosine_sim1 + 0.2 * cosine_sim2
+    # Kombinierte Ähnlichkeit mit optimierten Gewichten
+    cosine_sim_combined = 0.1 * cosine_sim1 + 0.9 * cosine_sim2
+    
+    # Optional: Ähnlichkeit um Popularität und Bewertung ergänzen
+    if 'vote_average' in df.columns and 'vote_count' in df.columns:
+        sim_bonus = calculate_popularity_similarity(df)
+        # Normalisierte Bonus-Ähnlichkeit integrieren mit geringem Gewicht
+        cosine_sim_combined = 0.9 * cosine_sim_combined + 0.1 * sim_bonus
     
     return cosine_sim_combined
 
@@ -76,6 +82,24 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+def calculate_popularity_similarity(df):
+    """Erstellt eine Ähnlichkeitsmatrix basierend auf Popularität und Bewertung"""
+    # Extrahiere Features
+    features = df[['vote_average', 'vote_count']].copy()
+    
+    # Fülle NaN-Werte
+    features['vote_average'] = features['vote_average'].fillna(features['vote_average'].mean())
+    features['vote_count'] = features['vote_count'].fillna(0)
+    
+    # Normalisiere Features
+    scaler = MinMaxScaler()
+    scaled_features = scaler.fit_transform(features)
+    
+    # Berechne Ähnlichkeit
+    similarity = cosine_similarity(scaled_features)
+    
+    return similarity
+
 def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=None, top_n=10):
     """
     Verbesserte Empfehlungsfunktion mit benutzerdefinierbarer Ergebnisanzahl (top_n)
@@ -89,7 +113,26 @@ def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=
     # Ähnlichkeiten berechnen
     sim_scores = list(enumerate(cosine_sim[idx]))
     
-    filtered_sim_scores = [(i, score) for i, score in sim_scores if i != idx]
+    # Falls genre gegeben, filtern mit verbesserter Genre-Erkennung
+    if genre:
+        cleaned_genre = genre.lower().strip()
+        filtered_sim_scores = []
+        
+        for i, score in sim_scores:
+            if i == idx:  # Überspringe den eigenen Film
+                continue
+                
+            movie_genres = [g.lower().strip() for g in df.iloc[i]['genres'].split(",")]
+            
+            # Direkte Genre-Übereinstimmung
+            if cleaned_genre in movie_genres:
+                # Bonus für exaktes Genre
+                filtered_sim_scores.append((i, score * 1.1))
+            # Fuzzy matching falls kein direkter Treffer
+            elif any(cleaned_genre in g for g in movie_genres):
+                filtered_sim_scores.append((i, score))
+    else:
+        filtered_sim_scores = [(i, score) for i, score in sim_scores if i != idx]
     
     # Top N holen, wobei N benutzerdefiniert ist
     filtered_sim_scores = sorted(filtered_sim_scores, key=lambda x: x[1], reverse=True)[:top_n]
@@ -102,4 +145,4 @@ def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=
     result_df = df.iloc[movie_indices].copy()
     result_df['similarity_score'] = similarities
     
-    return result_df.round(2)
+    return result_df
