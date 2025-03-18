@@ -60,7 +60,7 @@ def compute_similarities(df):
     cosine_sim2 = cosine_similarity(count_matrix)
     
     # Combine and weight matrixes
-    cosine_sim_combined = 0.8 * cosine_sim1 + 0.2 * cosine_sim2
+    cosine_sim_combined = 0.4 * cosine_sim1 + 0.6 * cosine_sim2
     
     return cosine_sim_combined
 
