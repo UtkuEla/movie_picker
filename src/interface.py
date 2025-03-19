@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-from interface.genre_filter import get_all_genres, filter_movies_by_genre
-from interface.recommendation import compute_similarities, get_recommendations_filtered
+from genre_filter import get_all_genres, filter_movies_by_genre
+from recommendation import compute_similarities, get_recommendations_filtered
 
 st.set_page_config(page_title="Movie Picker", layout="wide")
 st.title(":clapper: Welcome to Movie Picker :clapper:")
