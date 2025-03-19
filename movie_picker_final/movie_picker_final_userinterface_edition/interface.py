@@ -73,7 +73,6 @@ def main():
                 st.error("Movie not found in database. Try another title.")
             else:
                 recommendations = get_recommendations_filtered(df, df.loc[title_to_index[movie_input_cleaned], "title"], cosine_sim=cosine_sim_combined, method="combined", top_n=10)
-                recommendations.sort_values(by = ["vote_average"])
                 if recommendations is None or isinstance(recommendations, str) or recommendations.empty:
                     st.error("No recommendations found. Please check your input.")
                 else:

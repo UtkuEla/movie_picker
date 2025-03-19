@@ -103,6 +103,7 @@ def search_titles(df, genre, cosine_sim_combined, user_title=None):
     if user_title in df['title'].str.lower().values:
         selected_title = df['title'][df['title'].str.lower() == user_title].iloc[0]
         filtered_recommendations = get_recommendations_filtered(df, selected_title, genre, cosine_sim_combined, top_n=result_count)
+        filtered_recommendations.sort_values(by = ["vote_average"])
         if isinstance(filtered_recommendations, str):
             print(f"\n{filtered_recommendations}")
             return

@@ -102,4 +102,4 @@ def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=
     result_df = df.iloc[movie_indices].copy()
     result_df['similarity_score'] = similarities
     
-    return result_df.sort_values(by = ["vote_average"]).round(2)
+    return result_df.round(2)
