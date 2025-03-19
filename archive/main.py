@@ -1,8 +1,8 @@
 ## Search Functions ##
 
 from data_utils import load_data
-from genre_filter import get_all_genres, filter_movies_by_genre
-from recommendation import compute_similarities, get_recommendations_filtered
+from interface.genre_filter import get_all_genres, filter_movies_by_genre
+from interface.recommendation import compute_similarities, get_recommendations_filtered
 from tabulate import tabulate
 
 ## Search ##
@@ -103,7 +103,6 @@ def search_titles(df, genre, cosine_sim_combined, user_title=None):
     if user_title in df['title'].str.lower().values:
         selected_title = df['title'][df['title'].str.lower() == user_title].iloc[0]
         filtered_recommendations = get_recommendations_filtered(df, selected_title, genre, cosine_sim_combined, top_n=result_count)
-        filtered_recommendations.sort_values(by = ["vote_average"])
         if isinstance(filtered_recommendations, str):
             print(f"\n{filtered_recommendations}")
             return
@@ -126,7 +125,7 @@ def search_titles(df, genre, cosine_sim_combined, user_title=None):
     # Partial Match
     partial_matches = df['title'][df['title'].str.lower().str.contains(user_title, na=False)]
     if not partial_matches.empty:
-        print(f"\nDid you mean one of these?\n{'\n'.join(partial_matches[:5])}")
+        print(f"\nDid you mean one of these?\n{''.join(partial_matches[:5])}")
         user_retry = input("Please re-enter title: ").strip().lower()
         return search_titles(df, genre, cosine_sim_combined, user_retry)
     
