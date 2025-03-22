@@ -1,12 +1,11 @@
-from data_utils import load_data
 from genre_filter import filter_movies_by_genre
 from recommendation import compute_similarities, get_recommendations_filtered
 from tabulate import tabulate
 
 ## Import cosinus matrix, generated with initialisation.py
 import numpy as np
+import pandas as pd
 import json
-
 # Import cosinus matrix 
 cosine_sim_combined = np.load("cosine_sim_combined.parquet.npy")
 # Load unique genres from JSON
@@ -25,7 +24,7 @@ def main():
     global runs
     global selector
     
-    df = load_data("movies_cleaned_hard.parquet")
+    df = pd.read_parquet("movies_cleaned_hard.parquet")
     available_genres_lower = [genre.lower() for genre in available_genres]
     
     ## Now in files generated via initialisation

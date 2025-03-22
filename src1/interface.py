@@ -1,7 +1,13 @@
 import streamlit as st
 import pandas as pd
-from genre_filter import get_all_genres, filter_movies_by_genre
+from genre_filter import filter_movies_by_genre
 from recommendation import compute_similarities, get_recommendations_filtered
+import json
+import numpy as np
+
+# Load unique genres from JSON
+with open("unique_genres.json", "r") as f:
+    available_genres = json.load(f)
 
 st.set_page_config(page_title="Movie Picker", layout="wide")
 st.title(":clapper: Welcome to Movie Picker :clapper:")
@@ -22,11 +28,11 @@ if "mode" not in st.session_state:
     st.session_state.mode = None
 
 def main():
-    global df,  cosine_sim_combined
+    global df, cosine_sim_combined
 
     if df is None:
         df = load_data()
-        cosine_sim_combined = compute_similarities(df)
+        cosine_sim_combined = np.load("cosine_sim_combined.parquet.npy")
 
     if cosine_sim_combined is None:
         st.error("Error loading similarity matrices. Please check data processing.")
@@ -45,8 +51,7 @@ def main():
     st.markdown("---")
     
     if st.session_state.mode == "By Genre":
-        genres = get_all_genres(df)
-        selected_genre = st.selectbox("Choose a Genre", ["-- Please select --"] + genres)
+        selected_genre = st.selectbox("Choose a Genre", ["-- Please select --"] + available_genres)
 
         if selected_genre != "-- Please select --":
             movies = filter_movies_by_genre(df, selected_genre)

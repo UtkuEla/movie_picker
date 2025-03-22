@@ -6,6 +6,14 @@ from sklearn.preprocessing import MinMaxScaler
 import re
 import random
 
+# Counter variable
+runs = 0
+
+def count_runs():
+    global runs
+    runs += 1   
+    return runs
+
 def compute_similarities(df):
     # TF-IDF for movie-plot (overview)
     df['overview'] = df['overview'].fillna('')
@@ -73,10 +81,13 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def get_recommendations_filtered(df, title, runs, genre=None, cosine_sim=None, method=None, top_n=10):
+def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=None, top_n=10):
 
     # Index shift: pushes the start index of selected movies on each cycle
+    runs = count_runs()
     index_shift = runs * 10
+    print(f"Number of cycles: {runs}")
+
     # get movie index
     indices = pd.Series(df.index, index=df['title']).to_dict()
     if title not in indices:
