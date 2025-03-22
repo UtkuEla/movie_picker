@@ -4,9 +4,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import linear_kernel, cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 import re
+import random
 
 def compute_similarities(df):
-    # TF-IDF für Beschreibungen beibehalten (da hier Häufigkeit wichtig ist)
+    # TF-IDF for movie-plot (overview)
     df['overview'] = df['overview'].fillna('')
     df['overview'] = df['overview'].apply(preprocess_text)
     
@@ -36,7 +37,7 @@ def compute_similarities(df):
         lambda x: ' '.join([kw.strip() for kw in x.split(',')])
     )
     
-    # Combine meta data
+    # Combine meta data to meta-data-soup
     df['metadata_soup'] = (
         df['genres_weighted'] + ' ' + 
         df['director_weighted'] + ' ' + 
@@ -60,45 +61,43 @@ def compute_similarities(df):
     cosine_sim2 = cosine_similarity(count_matrix)
     
     # Combine and weight matrixes
-    cosine_sim_combined = 0.6 * cosine_sim1 + 0.4 * cosine_sim2
+    cosine_sim_combined = 0.4 * cosine_sim1 + 0.6 * cosine_sim2
     
     return cosine_sim_combined
 
 def preprocess_text(text):
-    """Text vorverarbeiten: Kleinschreibung, Entfernen von Sonderzeichen usw."""
     if not isinstance(text, str):
         return ""
-    # Zu Kleinbuchstaben
     text = text.lower()
-    # Entferne Sonderzeichen und behalte nur Buchstaben, Zahlen und Leerzeichen
     text = re.sub(r'[^\w\s]', '', text)
-    # Entferne doppelte Leerzeichen
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=None, top_n=10):
-    """
-    Verbesserte Empfehlungsfunktion mit benutzerdefinierbarer Ergebnisanzahl (top_n)
-    """
-    # Index vom Film holen
+def get_recommendations_filtered(df, title, runs, genre=None, cosine_sim=None, method=None, top_n=10):
+
+    # Index shift: pushes the start index of selected movies on each cycle
+    index_shift = runs * 10
+    # get movie index
     indices = pd.Series(df.index, index=df['title']).to_dict()
     if title not in indices:
         return "Title not found."
     idx = indices[title]
-    
-    # Ähnlichkeiten berechnen
-    sim_scores = list(enumerate(cosine_sim[idx]))
-    
+
+    # get similarity values 
+    sim_scores = list(enumerate(cosine_sim[idx])) 
+
     filtered_sim_scores = [(i, score) for i, score in sim_scores if i != idx]
-    
-    # Top N holen, wobei N benutzerdefiniert ist
-    filtered_sim_scores = sorted(filtered_sim_scores, key=lambda x: x[1], reverse=True)[:top_n]
+        
+    # Get the Top-N, whilst Top-N is defined by user 
+    filtered_sim_scores = sorted(filtered_sim_scores, key=lambda x: x[1], reverse=True)
+    # Index shift pushes the start and end value of index by 10 * runs 
+    # Does not handle end of list
+    filtered_sim_scores = filtered_sim_scores[index_shift:index_shift + top_n] if index_shift < len(filtered_sim_scores) else []
+
     movie_indices = [i[0] for i in filtered_sim_scores]
     
-    # Extrahiere Ähnlichkeitsgrade für die Ausgabe
+    # extract similarity for output
     similarities = [score for _, score in filtered_sim_scores]
-    
-    # Füge Ähnlichkeitsgrade zu den Ergebnissen hinzu
     result_df = df.iloc[movie_indices].copy()
     result_df['similarity_score'] = similarities
     
