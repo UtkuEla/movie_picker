@@ -12,18 +12,9 @@ cosine_sim_combined = np.load("cosine_sim_combined.parquet.npy")
 with open("unique_genres.json", "r") as f:
     available_genres = json.load(f)
 
-## Zähler für Durchäufe 
-runs = 0
-selector = 0
-
 ## Search ##
 def main():
-    
-    # runs: counter for program loops
-    # selector: saves user selection of branch 1 or 2
-    global runs
-    global selector
-    
+        
     df = pd.read_parquet("movies_cleaned_hard.parquet")
     available_genres_lower = [genre.lower() for genre in available_genres]
     
@@ -41,15 +32,7 @@ def main():
         user_choice = input("Enter 1, 2, or 3: ").strip()
         
         if user_choice == "1":
-            # if not first run, check if user comes from branch 2
-            if runs > 0:
-                if selector == 2:
-                    # reset the counter and save user selection of branch for next change of branch
-                    runs = 0
-                    selector = 1
-            # if first run
-            else: selector = 1
-    
+           
             print("\nAvailable Genres:\n" + ", ".join(available_genres) + "\n")
             selected_genre = search_genre(df, available_genres_lower, available_genres)
             if selected_genre:
@@ -62,14 +45,6 @@ def main():
                 break
                 
         elif user_choice == "2":
-            # if not first run, check if user comes from branch 1
-            if runs > 0:
-                if selector == 1:
-                    # reset the counter and save user selection of branch for next change of branch
-                    runs = 0
-                    selector = 2
-            # if first run
-            else: selector = 2
             
             search_titles(df, None, cosine_sim_combined)
             
@@ -101,11 +76,6 @@ def get_result_count():
                 print("Please enter a number between 5 and 50.")
         except ValueError:
             print("Please enter a valid number.")
-
-def count_runs():
-    global runs
-    runs += 1   
-    return runs
 
 def search_genre(df, available_genres_lower, available_genres, user_genre=None):
     # Exact Match
@@ -139,12 +109,10 @@ def search_titles(df, genre, cosine_sim_combined, user_title=None):
     
     # Count number of cycles
     result_count = get_result_count()
-    runs = count_runs()
-    print(f"Current cycle: {runs}")
     
     if user_title in df['title'].str.lower().values:
         selected_title = df['title'][df['title'].str.lower() == user_title].iloc[0]
-        filtered_recommendations = get_recommendations_filtered(df, selected_title, runs, genre, cosine_sim_combined, top_n=result_count)
+        filtered_recommendations = get_recommendations_filtered(df, selected_title, genre, cosine_sim_combined, top_n=result_count)
 
         if isinstance(filtered_recommendations, str):
             print(f"\n{filtered_recommendations}")

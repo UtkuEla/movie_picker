@@ -4,15 +4,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics.pairwise import linear_kernel, cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 import re
-import random
 
-# Counter variable
-runs = 0
-
-def count_runs():
-    global runs
-    runs += 1   
-    return runs
+# Globals für Index Shift
+index_shift = 0
+last_title = ""
 
 def compute_similarities(df):
     # TF-IDF for movie-plot (overview)
@@ -81,12 +76,18 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=None, top_n=10):
+def get_recommendations_filtered(df, title, selected_genre=None, cosine_sim_combined=None, top_n=10, counter = False):
 
-    # Index shift: pushes the start index of selected movies on each cycle
-    runs = count_runs()
-    index_shift = runs * 10
-    print(f"Number of cycles: {runs}")
+    # initialize globals
+    global index_shift, last_title
+
+    if title == last_title:
+        index_shift += 10
+    else:
+        index_shift = 0
+        last_title = title
+ 
+    print(f"Number of cycles: {index_shift}")
 
     # get movie index
     indices = pd.Series(df.index, index=df['title']).to_dict()
@@ -95,15 +96,21 @@ def get_recommendations_filtered(df, title, genre=None, cosine_sim=None, method=
     idx = indices[title]
 
     # get similarity values 
-    sim_scores = list(enumerate(cosine_sim[idx])) 
+    sim_scores = list(enumerate(cosine_sim_combined[idx])) 
 
     filtered_sim_scores = [(i, score) for i, score in sim_scores if i != idx]
+
+    # If genre filter was set by user
+    if selected_genre:
+        filtered_sim_scores = [
+            (i, score) for i, score in filtered_sim_scores if selected_genre in df.iloc[i]['genres']
+        ]
         
     # Get the Top-N, whilst Top-N is defined by user 
     filtered_sim_scores = sorted(filtered_sim_scores, key=lambda x: x[1], reverse=True)
     # Index shift pushes the start and end value of index by 10 * runs 
     # Does not handle end of list
-    filtered_sim_scores = filtered_sim_scores[index_shift:index_shift + top_n] if index_shift < len(filtered_sim_scores) else []
+    filtered_sim_scores = filtered_sim_scores[index_shift:index_shift + top_n] if index_shift >= 0 and index_shift < len(filtered_sim_scores) else []
 
     movie_indices = [i[0] for i in filtered_sim_scores]
     
