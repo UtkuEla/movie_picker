@@ -9,7 +9,7 @@ import re
 index_shift = 0
 last_title = ""
 
-def compute_similarities(df):
+def compute_similarities(df, cos1=0.4, cos2=0.6):
     # TF-IDF for movie-plot (overview)
     df['overview'] = df['overview'].fillna('')
     df['overview'] = df['overview'].apply(preprocess_text)
@@ -64,7 +64,8 @@ def compute_similarities(df):
     cosine_sim2 = cosine_similarity(count_matrix)
     
     # Combine and weight matrixes
-    cosine_sim_combined = 0.4 * cosine_sim1 + 0.6 * cosine_sim2
+    cosine_sim_combined = cos1 * cosine_sim1 + cos2 * cosine_sim2
+    print(f"Matrixwerte Zeilen 1 - 5: {cosine_sim_combined[:5]}")
     
     return cosine_sim_combined
 

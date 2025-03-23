@@ -5,6 +5,9 @@ from recommendation import compute_similarities, get_recommendations_filtered
 import json
 import numpy as np
 
+# for auto suggest 
+import difflib
+
 # Load unique genres from JSON
 with open("unique_genres.json", "r") as f:
     available_genres = json.load(f)
@@ -75,6 +78,7 @@ def main():
             movie_input = st.text_input(f"Enter a movie title from selected genre {selected_genre.lower()}:", key="movie_search")
             
             if movie_input:
+                
                 movie_input_cleaned = movie_input.strip().lower()
 
                 if movie_input_cleaned not in title_to_index:
@@ -92,6 +96,7 @@ def main():
                             st.text(f"Rating: {row['vote_average']} ⭐")
                             st.text(f"Director: {row['director']}")
                             st.text(f"Actors: {row['cast']}")
+                            st.text(f"Genres: {row['genres']}")
                             st.write(row['overview'])
                             st.image(row['poster_url'])
                             st.markdown("---")
@@ -102,6 +107,21 @@ def main():
         movie_input = st.text_input("Enter a Movie Title:")
 
         if movie_input:
+
+            ## -- Auto Suggest -- ##
+            suggestions = difflib.get_close_matches(movie_input, title_to_index, n=10, cutoff=0.3)
+            if suggestions:
+                st.write("Or did you mean...")
+                cols = st.columns(len(suggestions), gap="small")
+                for i, suggestion in enumerate(suggestions):
+                    with cols[i]:  
+                        st.text(f"{suggestion.title()} ")  
+                st.markdown("---")
+
+            else:
+                st.write("No suggestions found.")
+            ## -- END auto Suggest -- ##
+
             movie_input_cleaned = movie_input.strip().lower()
 
             if movie_input_cleaned not in title_to_index:
