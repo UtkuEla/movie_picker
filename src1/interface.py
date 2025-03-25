@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from genre_filter import filter_movies_by_genre
-from recommendation import compute_similarities, get_recommendations_filtered
+from recommendation import get_recommendations_filtered
 import json
 import numpy as np
 
@@ -66,7 +66,7 @@ def main():
 
             for _, row in movies_to_show.iterrows():
                 st.subheader(row['title'])
-                st.text(f"Rating: {row['vote_average']} ⭐")
+                st.text(f"Rating: {row['score']} ⭐")
                 st.text(f"Director: {row['director']}")
                 st.text(f"Actors: {row['cast']}")
                 st.write(row['overview'])
@@ -93,7 +93,7 @@ def main():
                         st.write(f"### Movies similar to {movie_input_cleaned}")
                         for _, row in filtered_recommendations.iterrows():
                             st.subheader(row['title'])
-                            st.text(f"Rating: {row['vote_average']} ⭐")
+                            st.text(f"Rating: {row['score']} ⭐")
                             st.text(f"Director: {row['director']}")
                             st.text(f"Actors: {row['cast']}")
                             st.text(f"Genres: {row['genres']}")
@@ -134,10 +134,11 @@ def main():
                     st.write(f"### Movies similar to {movie_input}")
                     for _, row in recommendations.iterrows():
                         st.subheader(row['title'])
-                        st.text(f"Rating: {row['vote_average']} ⭐")
+                        st.text(f"Rating: {row['score']} ⭐")
                         st.text(f"Director: {row['director']}")
                         st.text(f"Actors: {row['cast']}")
                         st.write(row['overview'])
+                        st.write(row['genres'])
                         st.image(row['poster_url'])
                         st.markdown("---")
                         
