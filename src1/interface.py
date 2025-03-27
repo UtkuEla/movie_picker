@@ -1,7 +1,16 @@
 import streamlit as st
 import pandas as pd
-from genre_filter import get_all_genres, filter_movies_by_genre
-from recommendation import compute_similarities, get_recommendations_filtered
+from genre_filter import filter_movies_by_genre
+from recommendation import get_recommendations_filtered
+import json
+import numpy as np
+
+# for auto suggest 
+import difflib
+
+# Load unique genres from JSON
+with open("unique_genres.json", "r") as f:
+    available_genres = json.load(f)
 
 st.set_page_config(page_title="Movie Picker", layout="wide")
 st.title(":clapper: Welcome to Movie Picker :clapper:")
@@ -22,11 +31,11 @@ if "mode" not in st.session_state:
     st.session_state.mode = None
 
 def main():
-    global df,  cosine_sim_combined
+    global df, cosine_sim_combined
 
     if df is None:
         df = load_data()
-        cosine_sim_combined = compute_similarities(df)
+        cosine_sim_combined = np.load("cosine_sim_combined.parquet.npy")
 
     if cosine_sim_combined is None:
         st.error("Error loading similarity matrices. Please check data processing.")
@@ -45,8 +54,7 @@ def main():
     st.markdown("---")
     
     if st.session_state.mode == "By Genre":
-        genres = get_all_genres(df)
-        selected_genre = st.selectbox("Choose a Genre", ["-- Please select --"] + genres)
+        selected_genre = st.selectbox("Choose a Genre", ["-- Please select --"] + available_genres)
 
         if selected_genre != "-- Please select --":
             movies = filter_movies_by_genre(df, selected_genre)
@@ -54,36 +62,87 @@ def main():
             movies_to_show = movies.iloc[st.session_state.movie_offset:st.session_state.movie_offset + 10]
 
             st.write(f"### Movies in {selected_genre} ({st.session_state.movie_offset + 1}-{st.session_state.movie_offset + len(movies_to_show)} of {total_movies})")
+            st.write(f"Selected Genre: {selected_genre}")
 
             for _, row in movies_to_show.iterrows():
                 st.subheader(row['title'])
-                st.text(f"Rating: {row['vote_average']} ⭐")
+                st.text(f"Rating: {row['score']} ⭐")
                 st.text(f"Director: {row['director']}")
                 st.text(f"Actors: {row['cast']}")
                 st.write(row['overview'])
+                st.image(row['poster_url'])
                 st.markdown("---")
+
+    ## --- Combine genre and title search --- ###
+           
+            movie_input = st.text_input(f"Enter a movie title from selected genre {selected_genre.lower()}:", key="movie_search")
+            
+            if movie_input:
+                
+                movie_input_cleaned = movie_input.strip().lower()
+
+                if movie_input_cleaned not in title_to_index:
+                    st.error(f"Movie not found in genre {selected_genre.lower()} or database. Try another title.")
+                else:
+
+                    filtered_recommendations = get_recommendations_filtered(df, df.loc[title_to_index[movie_input_cleaned], "title"], cosine_sim_combined=cosine_sim_combined, selected_genre=selected_genre, top_n=10)
+
+                    if filtered_recommendations is None or isinstance(filtered_recommendations, str) or filtered_recommendations.empty:
+                        st.error(f"Movie not found in genre {selected_genre.lower()}. Please check your input.")
+                    else:
+                        st.write(f"### Movies similar to {movie_input_cleaned}")
+                        for _, row in filtered_recommendations.iterrows():
+                            st.subheader(row['title'])
+                            st.text(f"Rating: {row['score']} ⭐")
+                            st.text(f"Director: {row['director']}")
+                            st.text(f"Actors: {row['cast']}")
+                            st.text(f"Genres: {row['genres']}")
+                            st.write(row['overview'])
+                            st.image(row['poster_url'])
+                            st.markdown("---")
+        
+    ## --- END Combine genre and title search --- ###
 
     elif st.session_state.mode == "By Movie":
         movie_input = st.text_input("Enter a Movie Title:")
 
         if movie_input:
+
+            ## -- Auto Suggest -- ##
+            suggestions = difflib.get_close_matches(movie_input, title_to_index, n=10, cutoff=0.3)
+            if suggestions:
+                st.write("Or did you mean...")
+                cols = st.columns(len(suggestions), gap="small")
+                for i, suggestion in enumerate(suggestions):
+                    with cols[i]:  
+                        st.text(f"{suggestion.title()} ")  
+                st.markdown("---")
+
+            else:
+                st.write("No suggestions found.")
+            ## -- END auto Suggest -- ##
+
             movie_input_cleaned = movie_input.strip().lower()
 
             if movie_input_cleaned not in title_to_index:
                 st.error("Movie not found in database. Try another title.")
             else:
-                recommendations = get_recommendations_filtered(df, df.loc[title_to_index[movie_input_cleaned], "title"], cosine_sim=cosine_sim_combined, method="combined", top_n=10)
+                recommendations = get_recommendations_filtered(df, df.loc[title_to_index[movie_input_cleaned], "title"], cosine_sim_combined=cosine_sim_combined, top_n=10)
                 if recommendations is None or isinstance(recommendations, str) or recommendations.empty:
                     st.error("No recommendations found. Please check your input.")
                 else:
                     st.write(f"### Movies similar to {movie_input}")
                     for _, row in recommendations.iterrows():
                         st.subheader(row['title'])
-                        st.text(f"Rating: {row['vote_average']} ⭐")
+                        st.text(f"Rating: {row['score']} ⭐")
                         st.text(f"Director: {row['director']}")
                         st.text(f"Actors: {row['cast']}")
                         st.write(row['overview'])
+                        st.write(row['genres'])
+                        st.image(row['poster_url'])
                         st.markdown("---")
-
+                        
+                        # Count program cycles for output variation    
+                    
 if __name__ == "__main__":
     main()
